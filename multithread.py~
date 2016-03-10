@@ -1,0 +1,104 @@
+__author__ = 'Kejin Long'
+##### Suggested clean drone startup sequence #####
+import time, sys, cv2, math
+import threading
+import thread
+import numpy as np
+#import ps_drone                                              # Import PS-Drone
+
+
+
+class imag(threading.Thread):
+	def  __init__(self,image,name):
+		threading.Thread.__init__(self)
+		#self.capture = cv2.VideoCapture(0)
+		#cv2.namedWindow("ColourTrackerWindow", cv2.WINDOW_NORMAL)
+		#self.video_capture = cv2.VideoCapture(0)
+		self.image = image
+		self.scale_down = 4
+		self.name = name
+
+	def run(self):		
+		      #threadLock.acquire()
+		      #f,image = self.video_capture.read()
+		      orig_img = cv2.flip(self.image, 1)
+		      img = cv2.GaussianBlur(orig_img, (5,5), 0)
+		      img = cv2.cvtColor(orig_img, cv2.COLOR_BGR2HSV)
+		      img = cv2.resize(img, (len(orig_img[0]) / self.scale_down, len(orig_img) / self.scale_down))
+		      red_lower = np.array([0, 150, 0],np.uint8)
+		      red_upper = np.array([5, 255, 255],np.uint8)
+		      red_binary = cv2.inRange(img, red_lower, red_upper)
+		      dilation = np.ones((15, 15), "uint8")
+		      red_binary = cv2.dilate(red_binary, dilation)
+		      image, contours, hierarchy = cv2.findContours(red_binary, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
+		      max_area = 0
+		      largest_contour = None
+		      for idx, contour in enumerate(contours):
+			area = cv2.contourArea(contour)
+			if area > max_area:
+			  max_area = area
+			  largest_contour = contour
+		      if not largest_contour == None:
+			moment = cv2.moments(largest_contour)
+			if moment["m00"] > 1000 / self.scale_down:
+		  	  rect = cv2.minAreaRect(largest_contour)
+			  rect = ((rect[0][0] * self.scale_down, rect[0][1] * self.scale_down), (rect[1][0] * self.scale_down, rect[1][1] * self.scale_down), rect[2])
+			  box = cv2.boxPoints(rect)
+			  box = np.int0(box)
+			  cv2.drawContours(orig_img,[box], 0, (0, 0, 255), 2)
+			  #cv2.imshow("ColourTrackerWindow", orig_img)
+			  cbox = (box[0]+box[1]+box[2]+box[3])/4
+			  bx = cbox[0]
+		          by = cbox[1]
+			  print "The bx and by is:", bx, by,self.name
+			  print "Time is ", ctime()
+			
+
+			  if cv2.waitKey(20) == 27:
+				threadLock.release()
+				cv2.destroyWindow("ColourTrackerWindow")
+				#video_capture.release()
+				#break
+		      #threadLock.release()
+
+if __name__== '__main__':
+	video_capture = cv2.VideoCapture(0)
+	while True:
+		f,image = video_capture.read()
+		threadLock = threading.Lock()
+		threads = []
+		cv2.namedWindow("ColourTrackerWindow", cv2.WINDOW_NORMAL)
+		t1=imag(image,'t1')		
+		t1.start()
+
+		time.sleep(0.01)
+		f,image = video_capture.read()
+		t2=imag(image,'t2')		
+		t2.start()
+
+		time.sleep(0.01)
+		f,image = video_capture.read()
+		t3=imag(image,'t3')		
+		t3.start()
+		
+		time.sleep(0.01)
+		f,image = video_capture.read()
+		t4=imag(image,'t4')		
+		t4.start()
+
+		time.sleep(0.01)
+		f,image = video_capture.read()
+		t5=imag(image,'t5')		
+		t5.start()
+
+		time.sleep(0.01)
+		f,image = video_capture.read()
+		t6=imag(image,'t6')		
+		t6.start()
+
+		time.sleep(0.01)
+		f,image = video_capture.read()
+		t7=imag(image,'t7')		
+		t7.start()
+
+

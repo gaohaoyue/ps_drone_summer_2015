@@ -1,0 +1,166 @@
+__author__ = 'gary'
+#########
+# firstVideo.py
+# This program is part of the online PS-Drone-API-tutorial on www.playsheep.de/drone.
+# It shows the general usage of the video-function of a Parrot AR.Drone 2.0 using the PS-Drone-API.
+# The drone will stay on the ground.
+# Dependencies: a POSIX OS, openCV2, PS-Drone-API 2.0 beta or higher.
+# (w) J. Philipp de Graaff, www.playsheep.de, 2014
+##########
+# LICENCE:
+#   Artistic License 2.0 as seen on http://opensource.org/licenses/artistic-license-2.0 (retrieved December 2014)
+#   Visit www.playsheep.de/drone or see the PS-Drone-API-documentation for an abstract from the Artistic License 2.0.
+###########
+
+##### Suggested clean drone startup sequence #####
+import time, sys, cv2, math
+import numpy as np
+import ps_drone                                              # Import PS-Drone
+
+drone = ps_drone.Drone()                                     # Start using drone
+drone.startup()                                              # Connects to drone and starts subprocesses
+
+drone.reset()                                                # Sets drone's status to good (LEDs turn green when red)
+while (drone.getBattery()[0] == -1):      time.sleep(0.1)    # Waits until drone has done its reset
+print "Battery: "+str(drone.getBattery()[0])+"%  "+str(drone.getBattery()[1])	# Gives a battery-status
+drone.useDemoMode(True)                                      # Just give me 15 basic dataset per second (is default anyway)
+
+#Configuration
+#drone.setSpeed(0.1)
+
+##### Mainprogram begin #####
+drone.setConfigAllID()                                       # Go to multiconfiguration-mode
+drone.sdVideo()                                              # Choose lower resolution (hdVideo() for...well, guess it)
+drone.frontCam()                                             # Choose front view
+CDC = drone.ConfigDataCount
+while CDC == drone.ConfigDataCount:       time.sleep(0.0001) # Wait until it is done (after resync is done)
+drone.startVideo()                                           # Start video-function
+#drone.midVideo()
+drone.showVideo()                                            # Display the video
+
+i = 1
+j = 1
+##### And action !
+print "Use <space> to toggle front- and groundcamera, any other key to stop"
+IMC =    drone.VideoImageCount                               # Number of encoded videoframes
+stop =   False
+ground = False
+
+
+
+
+while not stop:	
+	while drone.VideoImageCount == IMC: 
+		time.sleep(0.01)     # Wait until the next video-frame
+		print "Still in the while.video loop"		
+	print "Enter While Loop ",i," times!" # In order to debug				
+	IMC = drone.VideoImageCount
+	key = drone.getKey()                                     # Gets a pressed key
+	if key==" ":
+		if ground:              ground = False
+		else:                   ground = True
+		drone.groundVideo(ground)                            # Toggle between front- and groundcamera. Hint: options work for all videocommands
+	elif key == "l":
+		if drone.NavData["demo"][0][2] and not drone.NavData["demo"][0][3]:	drone.takeoff()
+		else:	drone.land()
+	elif key == "0":	drone.hover()
+	elif key == "w":	drone.moveForward()
+	elif key == "s":	drone.moveBackward()
+	elif key == "a":	drone.moveLeft()
+	elif key == "d":	drone.moveRight()
+	elif key == "q":	drone.turnLeft()
+	elif key == "e":	drone.turnRight()
+	elif key == "7":	drone.turnAngle(-10,1)
+	elif key == "9":	drone.turnAngle( 10,1)
+	elif key == "4":	drone.turnAngle(-45,1)
+	elif key == "6":	drone.turnAngle( 45,1)
+	elif key == "1":	drone.turnAngle(-90,1)
+	elif key == "3":	drone.turnAngle( 90,1)
+	elif key == "8":	drone.moveUp()
+	elif key == "2":	drone.moveDown()
+	elif key == "*":	drone.doggyHop()
+	elif key == "+":	drone.doggyNod()
+	elif key == "-":	drone.doggyWag()
+	elif key != "":		stop = True
+
+	image = drone.VideoImage
+	scale_down = 4
+	
+	#add-on from detectobject ------------------------------------------------------------
+	orig_image = cv2.flip(image,1)
+	image_flip = cv2.GaussianBlur(orig_image, (5,5), 0)
+	image_flip = cv2.cvtColor(orig_image, cv2.COLOR_BGR2HSV)
+	image_flip = cv2.resize(image_flip, (len(orig_image[0]) / scale_down, len(orig_image) / scale_down))
+	red_lower = np.array([0, 150, 0],np.uint8)
+	red_upper = np.array([5, 255, 255],np.uint8)
+	red_binary = cv2.inRange(image_flip, red_lower, red_upper)
+	dilation = np.ones((15, 15), "uint8")
+	red_binary = cv2.dilate(red_binary, dilation)
+	image_con, contours, hierarchy = cv2.findContours(red_binary, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
+	max_area = 0
+	largest_contour = None
+	print "Finish detecting red box"
+
+	for idx, contour in enumerate(contours):
+		area = cv2.contourArea(contour)
+		if area > max_area:
+			max_area = area
+			largest_contour = contour
+	print "Finish finding largest contour"
+
+	if not largest_contour == None:
+		moment = cv2.moments(largest_contour)
+		drone.takeoff()
+
+		if moment["m00"] > 1000 / scale_down:
+			rect = cv2.minAreaRect(largest_contour)
+			rect = ((rect[0][0] * scale_down, rect[0][1] * scale_down), (rect[1][0] * scale_down, rect[1][1] * scale_down), rect[2])
+			box = cv2.boxPoints(rect)
+			box = np.int0(box)
+			cv2.drawContours(orig_image,[box], 0, (0, 0, 255), 2)
+			cv2.imshow("ColourTrackerWindow", orig_image)
+
+			print "Draw red box ",j, " times!",'\n'  #In order to debug
+			j=j+1
+			
+			#Calculate the box center and image center
+			cbox = (box[0]+box[1]+box[2]+box[3])/4
+			bx = cbox[0]
+			by = cbox[1]
+			ix = len(image[0])/2
+			iy = len(image)/2
+
+			# Adjust the drone to follow the red square------------------------
+			#drone.move(leftRight, backwardForward, downUp, turnLeftRight)    # Do movement
+			drone.mtrim()
+			if (bx-ix)<0 and (by-iy)<0:
+				drone.stop()
+				#drone.mtrim()
+				drone.move(-0.1, 0, 0.1, -0.01) 
+			elif (bx-ix)<0 and (by-iy)>0:
+				drone.stop()
+				#drone.mtrim()
+				drone.move(-0.1, 0, -0.1, -0.01)
+			elif (bx-ix)>0 and (by-iy)<0:
+				drone.stop()
+				#drone.mtrim()
+				drone.move(0.1, 0, 0.1, 0.01)
+			elif (bx-ix)>0 and (by-iy)>0:
+				drone.stop()
+				#drone.mtrim()
+				drone.move(0.1, 0, -0.1, 0.01)
+			#------------------------------------------------------------------
+
+
+			if cv2.waitKey(20) == 27:
+				drone.land()
+				cv2.destroyWindow("ColourTrackerWindow")
+				self.capture.release()
+	i=i+1
+        #---------------------------------------------------------
+
+
+
+
+
+

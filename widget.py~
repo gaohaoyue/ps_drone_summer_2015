@@ -1,0 +1,13 @@
+from Tkinter import *
+
+class Application:
+	def __init__(self, master):
+		pane = Frame(master)
+		Label(pane, text="Pane Title").pack()
+		self.b = Button(pane, width=12, height=12,
+		       image=launch_icon, command=self.launch)
+		self.b.place(relx=1, x=-2, y=2, anchor=NE)		
+
+
+root = Tk()
+root.mainloop()

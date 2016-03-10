@@ -1,0 +1,300 @@
+#import Tkinter as tk
+from Tkinter import *
+import cv2
+from collections import deque
+import time
+import Image, ImageTk
+import numpy as np
+import Queue
+import threading
+import thread
+
+class Application:
+	def __init__(self, master):
+		#self.frame = Frame(master,padx=700,pady=500)
+		self.master = master
+		self.frame = Frame(self.master)
+		self.frame.pack()
+		self.labelface = Label(self.master, text="AR Drone 2.0",font=25)
+		self.labelface.pack()
+		self.button1 = Button(
+			self.frame, name="button1", text="Facial Detection", fg="red", command=self.faced,
+			bd=5,padx=70,pady=50,font=25)
+		self.button1.pack(side=LEFT)
+		self.button2 = Button(
+			self.frame, name="button2", text="Manual", command=self.man,bd=5,padx=70,pady=50,font=25
+			)
+		self.button2.pack()
+		self.button3 = Button(master=root,text ='exit', bg = 'green',command=lambda: quit(root),bd=5,padx=70,pady=50,font=25)
+
+		self.button3.pack()
+	 	self.cam = cv2.VideoCapture(0)
+		self.deter = False
+
+	def faced(self):
+		'''self.button1.config(state='disabled')
+		self.button2.config(state='disabled')'''
+		
+		self.button1.destroy()
+		self.button2.destroy()
+		self.button3.destroy()
+		self.labelface.destroy()
+		self.frame.destroy()
+		#self.video = self.cam
+		if self.deter: 
+			self.cam = cv2.VideoCapture(0)
+			self.deter = False
+		self.topframe = Frame(self.master)
+		self.topframe.pack()
+		self.botframe = Frame(self.master)
+		self.botframe.pack(side=BOTTOM)
+
+		self.name = Label(self.master,text = 'face tracking',font=25)
+		self.name.pack()
+
+		self.button4 = Button(self.botframe, text="Go back",bd=5,font=25,command=self.gobackface)
+		self.button4.pack()
+		self.image_label = Label(master=self.master)
+		self.image_label.pack()
+		
+		'''self.fps_label = Label(master=self.master)
+		self.fps_label._frame_times = deque([0]*5)  # arbitrary 5 frame average FPS
+		self.fps_label.pack()'''
+
+		self.threadLock = threading.RLock()
+		#threads = []
+		self.q = Queue.Queue(maxsize=100)
+		self.t1=imag(self.cam,'t1',self.q,self.threadLock)
+		self.t2=imag(self.cam,'t2',self.q,self.threadLock)
+		self.t4=imag(self.cam,'t4',self.q,self.threadLock)
+		self.t5=imag(self.cam,'t5',self.q,self.threadLock)
+		self.t6=imag(self.cam,'t6',self.q,self.threadLock)
+		self.t7=imag(self.cam,'t7',self.q,self.threadLock)
+		self.t3=showimag(self.image_label,self.q)
+
+		self.t1.start()
+		self.t2.start()
+		self.t4.start()
+		self.t5.start()
+		self.t6.start()
+		self.t7.start()
+		self.t3.start()
+	#	self.master.after(0, func=lambda: self.update_all2())
+		
+		
+	def man(self):
+			
+		self.button1.destroy()
+		self.button2.destroy()
+		self.button3.destroy()
+		self.labelface.destroy()
+		self.frame.destroy()
+		if self.deter: 
+			self.cam = cv2.VideoCapture(0)
+			self.deter = False
+		self.topframe = Frame(self.master)
+		self.topframe.pack()
+		self.botframe = Frame(self.master)
+		self.botframe.pack(side=BOTTOM)
+
+		self.name = Label(self.master,text = 'manual control',font=25)
+		self.name.pack()
+
+		self.button5 = Button(
+		self.botframe, text="Go back",bd=5,font=25,command=self.goback)
+		self.button5.pack()
+		self.image_label = Label(master=self.master)
+		self.image_label.pack()
+
+		self.master.after(0, func=lambda: self.update_all())
+
+	def gobackface(self):
+		self.button4.destroy()
+		self.name.destroy()		
+		self.image_label.destroy()
+		self.topframe.destroy()
+		self.botframe.destroy()
+		self.deter = True
+
+		self.frame = Frame(self.master)
+		self.frame.pack()
+		self.labelface = Label(self.master, text="AR Drone 2.0",font=25)
+		self.labelface.pack()		
+		self.button1 = Button(
+			self.frame, name="button1", text="Facial Detection", fg="red", command=self.faced,
+			bd=5,padx=70,pady=50,font=25)
+		self.button1.pack(side=LEFT)
+		self.button2 = Button(
+			self.frame, name="button2", text="Manual", command=self.man,bd=5,padx=70,pady=50,font=25
+			)
+		self.button2.pack()
+		self.button3 = Button(master=root,text ='exit', bg = 'green',command=lambda: quit(root),bd=5,padx=70,pady=50,font=25)
+
+		self.button3.pack()
+		del(self.t1)
+		del(self.t2)
+		del(self.t3)
+		del(self.t4)
+		del(self.t5)
+		del(self.t6)
+		del(self.t7)
+		cv2.destroyAllWindows()
+		self.cam.release()
+		
+
+	def goback(self):
+		self.button5.destroy()
+		self.name.destroy()
+		self.image_label.destroy()
+		self.topframe.destroy()
+		self.botframe.destroy()
+
+		self.deter = True
+		self.frame = Frame(self.master)
+		self.frame.pack()
+		self.labelface = Label(self.master, text="AR Drone 2.0",font=25)
+		self.labelface.pack()
+		self.button1 = Button(
+			self.frame, name="button1", text="Facial Detection", fg="red", command=self.faced,
+			bd=5,padx=70,pady=50,font=25)
+		self.button1.pack(side=LEFT)
+		self.button2 = Button(
+			self.frame, name="button2", text="Manual", command=self.man,bd=5,padx=70,pady=50,font=25
+			)
+		self.button2.pack()
+		self.button3 = Button(master=root,text ='exit', bg = 'green',command=lambda: quit(root),bd=5,padx=70,pady=50,font=25)
+
+		self.button3.pack()
+		cv2.destroyAllWindows()
+		self.cam.release()
+
+	def update_image(self):
+
+		(readsuccessful, f) = self.cam.read()
+		gray_im = cv2.cvtColor(f, cv2.COLOR_BGR2RGBA)
+		a = Image.fromarray(gray_im)
+		b = ImageTk.PhotoImage(image=a)
+		self.image_label.configure(image=b)
+		self.image_label._image_cache = b  # avoid garbage collection
+		self.master.update()
+
+
+	def update_all(self):
+		self.update_image()
+		self.master.after(20, func=lambda: self.update_all())
+
+
+
+class imag(threading.Thread):
+	def  __init__(self,video_capture,name,q,threadLock):
+		threading.Thread.__init__(self)
+		self.q = q
+		self.threadLock = threadLock
+		#self.capture = cv2.VideoCapture(0)
+		#cv2.namedWindow("ColourTrackerWindow", cv2.WINDOW_NORMAL)
+		self.video = video_capture
+		self.scale_down = 4
+		self.name = name
+
+	def run(self):
+		while True:
+			print "Enter while, %s\n"%self.name
+			#threadLock.acquire()
+			self.threadLock.acquire()
+			print "Get the Image, %s\n"%self.name
+			(self.f,self.image) = self.video.read()
+			#threading.RLock().release()
+			self.threadLock.release()
+
+			self.orig_img = cv2.flip(self.image, 1)
+			self.img = cv2.GaussianBlur(self.orig_img, (5,5), 0)
+			self.img = cv2.cvtColor(self.orig_img, cv2.COLOR_BGR2HSV)
+			self.img = cv2.resize(self.img, (len(self.orig_img[0]) / self.scale_down, len(self.orig_img) / self.scale_down))
+			self.red_lower = np.array([0, 150, 0],np.uint8)
+			self.red_upper = np.array([5, 255, 255],np.uint8)
+			self.red_binary = cv2.inRange(self.img, self.red_lower, self.red_upper)
+			self.dilation = np.ones((15, 15), "uint8")
+			self.red_binary = cv2.dilate(self.red_binary, self.dilation)
+			self.image, self.contours, self.hierarchy = cv2.findContours(self.red_binary, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
+			self.max_area = 0
+			self.largest_contour = None
+			for self.idx, self.contour in enumerate(self.contours):
+				self.area = cv2.contourArea(self.contour)
+				if self.area > self.max_area:
+					self.max_area = self.area
+					self.largest_contour = self.contour
+			if not self.largest_contour == None:
+				self.moment = cv2.moments(self.largest_contour)
+				if self.moment["m00"] > 1000 / self.scale_down:
+					self.rect = cv2.minAreaRect(self.largest_contour)
+					self.rect = ((self.rect[0][0] * self.scale_down, self.rect[0][1] * self.scale_down), (self.rect[1][0] * self.scale_down, self.rect[1][1] * self.scale_down), self.rect[2])
+					self.box = cv2.boxPoints(self.rect)
+					self.box = np.int0(self.box)
+					#cv2.drawContours(self.orig_img,[self.box], 0, (0, 0, 255), 2)
+
+					'''threadLock.acquire()
+					print "Locked for window, %s\n"% self.name
+					cv2.imshow("ColourTrackerWindow", self.orig_img)
+					threadLock.acquire()'''
+					self.q.put([self.orig_img, [self.box]])
+
+					self.cbox = (self.box[0]+self.box[1]+self.box[2]+self.box[3])/4
+					self.bx = self.cbox[0]
+					self.by = self.cbox[1]
+					print "The bx and by is:%d, %d, %s \n" %(self.bx, self.by, self.name)
+					print "Time is %f\n"% time.time()
+
+					'''if cv2.waitKey(20) == 27:
+						cv2.destroyWindow("ColourTrackerWindow")
+						self.video.release()'''
+			#self.video.release()
+
+class showimag(threading.Thread):
+
+	def  __init__(self,image_label,q):
+		threading.Thread.__init__(self)
+		self.image_label = image_label
+		self.q = q
+		#Application.__init__(self,master=Application)
+
+	def run(self):
+		#cv2.namedWindow("ColourTrackerWindow", cv2.WINDOW_NORMAL)
+		while True:
+			if self.q.empty() is False:
+				print "Show image!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!11"
+				items= self.q.get()
+				item1 = items[0]
+				item2 = items[1]
+				cv2.drawContours(item1,item2, 0, (0, 0, 255), 2)
+				#cv2.imshow("ColourTrackerWindow", item1)
+				item3 = cv2.cvtColor(item1, cv2.COLOR_BGR2RGBA)
+				a = Image.fromarray(item3)
+				b = ImageTk.PhotoImage(image=a)
+				self.image_label.configure(image=b)
+				self.image_label._image_cache = b  # avoid garbage collection
+				#self.master.update()
+				#cv2.waitKey(1)
+				self.q.task_done()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+if __name__ == '__main__':
+	root = Tk()
+	#q = Queue.Queue(maxsize=100)
+	root.geometry("800x600+30+30")
+	app = Application(root)
+	root.mainloop()
+
+
+
